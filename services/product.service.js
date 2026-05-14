@@ -5,19 +5,32 @@ const Product = require("../model/Products");
 const normalizeSlug = (value = "") =>
   String(value).toLowerCase().replace("&", "").split(" ").join("-");
 
+//Slugify Function for correcting the routes
+const slugify = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
 // create product service
 exports.createProductService = async (data) => {
+  //Injecting slug if not provided
+  if (data.title && !data.slug) {
+    data.slug = slugify(data.title) + "-" + Date.now();
+  }
   const product = await Product.create(data);
+
+
   const { _id: productId, brand, category } = product;
   //update Brand
-  await Brand.updateOne(
-    { _id: brand.id },
-    { $push: { products: productId } }
-  );
+  await Brand.updateOne({ _id: brand.id }, { $push: { products: productId } });
   //Category Brand
   await Category.updateOne(
     { _id: category.id },
-    { $push: { products: productId } }
+    { $push: { products: productId } },
   );
   return product;
 };
@@ -49,7 +62,9 @@ exports.getAllProductsService = async (filters = {}) => {
   const collection = normalizeSlug(filters.collection);
   const category = normalizeSlug(filters.category);
   const subCategory = normalizeSlug(filters.subCategory || filters.subcategory);
-  const search = String(filters.search || filters.q || "").trim().toLowerCase();
+  const search = String(filters.search || filters.q || "")
+    .trim()
+    .toLowerCase();
 
   // Collection-first filtering for precise menu-based navigation.
   if (collection) {
@@ -72,12 +87,14 @@ exports.getAllProductsService = async (filters = {}) => {
     products = products.filter(
       (p) =>
         normalizeSlug(p.parent) === category ||
-        normalizeSlug(p.category?.name) === category
+        normalizeSlug(p.category?.name) === category,
     );
   }
 
   if (subCategory) {
-    products = products.filter((p) => normalizeSlug(p.children) === subCategory);
+    products = products.filter(
+      (p) => normalizeSlug(p.children) === subCategory,
+    );
   }
 
   // Product text search is applied after category filters.
@@ -144,7 +161,7 @@ exports.getTopRatedProductService = async () => {
   const topRatedProducts = products.map((product) => {
     const totalRating = product.reviews.reduce(
       (sum, review) => sum + review.rating,
-      0
+      0,
     );
     const averageRating = totalRating / product.reviews.length;
 
@@ -219,31 +236,45 @@ exports.updateProductService = async (id, currProduct) => {
   return product;
 };
 
-
-
 // get Reviews Products
 exports.getReviewsProducts = async () => {
   const result = await Product.find({
     reviews: { $exists: true, $ne: [] },
-  })
-    .populate({
-      path: "reviews",
-      populate: { path: "userId", select: "name email imageURL" },
-    });
+  }).populate({
+    path: "reviews",
+    populate: { path: "userId", select: "name email imageURL" },
+  });
 
-  const products = result.filter(p => p.reviews.length > 0)
+  const products = result.filter((p) => p.reviews.length > 0);
 
   return products;
 };
 
 // get Reviews Products
 exports.getStockOutProducts = async () => {
-  const result = await Product.find({ status: "out-of-stock" }).sort({ createdAt: -1 })
+  const result = await Product.find({ status: "out-of-stock" }).sort({
+    createdAt: -1,
+  });
   return result;
 };
 
 // get Reviews Products
 exports.deleteProduct = async (id) => {
-  const result = await Product.findByIdAndDelete(id)
+  const result = await Product.findByIdAndDelete(id);
   return result;
+};
+
+
+// get product by slug
+exports.getProductBySlugService = async (slug) => {
+  const product = await Product.findOne({ slug }).populate({
+    path: "reviews",
+    populate: { path: "userId", select: "name email imageURL" },
+  });
+  if (!product) {
+    const error = new Error("Product not found with this slug");
+    error.status = 404;
+    throw error;
+  }
+  return product;
 };
