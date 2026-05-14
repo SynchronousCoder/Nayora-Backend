@@ -24,8 +24,11 @@ const contactRoutes = require("./routes/contact.routes");
 // const uploadRouter = require('./routes/uploadFile.route');
 const cloudinaryRoutes = require("./routes/cloudinary.routes");
 
-// middleware
-app.use(cors());
+// middleware 
+app.use(cors({
+  origin: 'https://frontend-nayora.vercel.app',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
