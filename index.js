@@ -25,10 +25,11 @@ const contactRoutes = require("./routes/contact.routes");
 const cloudinaryRoutes = require("./routes/cloudinary.routes");
 
 // middleware 
-app.use(cors({
-  origin: 'https://frontend-nayora.vercel.app',
-  credentials: true
-}));
+app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
