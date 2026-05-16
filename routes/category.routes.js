@@ -5,6 +5,12 @@ const categoryController = require('../controller/category.controller');
 const verifyToken = require('../middleware/verifyToken');
 const authorization = require('../middleware/authorization');
 
+// Nested slug route (parent/child)
+router.get('/slug/:parent/:child', categoryController.getCategoryByNestedSlug);
+
+// Single slug route (parent only)
+router.get('/slug/:slug', categoryController.getCategoryBySlug);
+
 // get
 router.get('/get/:id', categoryController.getSingleCategory);
 // add

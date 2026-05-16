@@ -35,8 +35,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// connect database
-connectDB();
 
 app.use("/api/user", userRoutes);
 app.use("/api/category", categoryRoutes);
@@ -72,6 +70,18 @@ app.use((req, res, next) => {
 // global error handler
 app.use(globalErrorHandler);
 
-app.listen(PORT, () => console.log(`server running on port ${PORT}`));
+// connect database
+// connect database and start server after DB is ready
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => console.log(`server running on port ${PORT}`));
+  } catch (error) {
+    console.error("DB connection failed:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 module.exports = app;

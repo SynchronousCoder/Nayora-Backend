@@ -1,6 +1,5 @@
 const ApiError = require('../errors/api-error');
 const Category = require('../model/Category');
-const Products = require('../model/Products');
 
 const normalizeType = (value = '') => String(value).trim().toLowerCase();
 
@@ -23,60 +22,95 @@ const normalizePayloadType = (payload = {}) => {
   return nextPayload;
 };
 
-// create category service
+const slugify = (text = '') => {
+  return text.toString().toLowerCase().trim()
+    .replace(/&/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
 exports.createCategoryService = async (data) => {
-  const category = await Category.create(normalizePayloadType(data));
+  const normalized = normalizePayloadType(data);
+  if (!normalized.slug && normalized.parent) {
+    normalized.slug = slugify(normalized.parent);
+  }
+  const category = await Category.create(normalized);
   return category;
-}
+};
 
-// create all category service
 exports.addAllCategoryService = async (data) => {
-  await Category.deleteMany()
-  const category = await Category.insertMany(data);
+  await Category.deleteMany();
+  const dataWithSlugs = data.map(item => ({
+    ...item,
+    slug: slugify(item.parent || ''),
+  }));
+  const category = await Category.insertMany(dataWithSlugs);
   return category;
-}
+};
 
-// get all show category service
+// ✅ populate HATAYA - products sirf IDs return honge
 exports.getShowCategoryServices = async () => {
-  const category = await Category.find({status:'Show'}).populate('products');
-  return category;
-}
+  const categories = await Category.aggregate([
+    { 
+      $match: { 
+        status: 'Show',
+        // Sirf parent documents — child field nahi honi chahiye
+        child: { $exists: false }
+      } 
+    },
+    { $sort: { parent: 1 } }
+  ]);
+  return categories;
+};
 
-// get all category 
 exports.getAllCategoryServices = async () => {
-  const category = await Category.find({})
+  const category = await Category.find({});
   return category;
-}
+};
 
-// get type of category service
+// ✅ populate HATAYA
 exports.getCategoryTypeService = async (param) => {
   const typeAliases = resolveTypeAliases(param);
-  const categories = await Category.find({ productType: { $in: typeAliases } }).populate('products');
+  const categories = await Category.find({ productType: { $in: typeAliases } });
   return categories;
-}
+};
 
-// get type of category service
 exports.deleteCategoryService = async (id) => {
   const result = await Category.findByIdAndDelete(id);
   return result;
-}
+};
 
-// update category
-exports.updateCategoryService = async (id,payload) => {
-  const isExist = await Category.findOne({ _id:id })
-
+exports.updateCategoryService = async (id, payload) => {
+  const isExist = await Category.findOne({ _id: id });
   if (!isExist) {
-    throw new ApiError(404, 'Category not found !')
+    throw new ApiError(404, 'Category not found!');
   }
+  const normalized = normalizePayloadType(payload);
+  if (normalized.parent) {
+    normalized.slug = slugify(normalized.parent);
+  }
+  const result = await Category.findOneAndUpdate({ _id: id }, normalized, { new: true });
+  return result;
+};
 
-  const result = await Category.findOneAndUpdate({ _id:id }, normalizePayloadType(payload), {
-    new: true,
-  })
-  return result
-}
-
-// get single category
 exports.getSingleCategoryService = async (id) => {
   const result = await Category.findById(id);
   return result;
-}
+};
+
+// ✅ slug based - populate WITH products (sirf yahan chahiye)
+exports.getCategoryBySlugService = async (slug) => {
+  // Try exact slug match pehle
+  let result = await Category.findOne({ slug }).populate('products');
+  
+  // Agar nahi mila, try case-insensitive
+  if (!result) {
+    result = await Category.findOne({ 
+      slug: { $regex: new RegExp(`^${slug}$`, 'i') } 
+    }).populate('products');
+  }
+  
+  return result;
+};

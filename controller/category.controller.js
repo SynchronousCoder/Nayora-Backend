@@ -105,3 +105,32 @@ exports.getSingleCategory = async (req,res,next) => {
     next(error)
   }
 }
+
+// get category by nested slug (women/bracelets)
+exports.getCategoryByNestedSlug = async (req, res, next) => {
+  try {
+    const { parent, child } = req.params;
+    const slug = `${parent}/${child}`;
+    
+    const result = await categoryServices.getCategoryBySlugService(slug);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    res.status(200).json({ success: true, result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// get category by slug (mens only)
+exports.getCategoryBySlug = async (req, res, next) => {
+  try {
+    const result = await categoryServices.getCategoryBySlugService(req.params.slug);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    res.status(200).json({ success: true, result });
+  } catch (error) {
+    next(error);
+  }
+};
