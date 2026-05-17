@@ -23,6 +23,7 @@ const newsletterRoutes = require("./routes/newsletter.routes");
 const contactRoutes = require("./routes/contact.routes");
 // const uploadRouter = require('./routes/uploadFile.route');
 const cloudinaryRoutes = require("./routes/cloudinary.routes");
+const sitemapRoutes = require("./routes/sitemap.routes");
 
 // middleware 
 app.use(cors());
@@ -49,6 +50,7 @@ app.use("/api/cloudinary", cloudinaryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/", sitemapRoutes);
 
 // root route
 app.get("/", (req, res) => res.send("Apps worked successfully"));
